@@ -117,17 +117,22 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         dispatch({ type: 'ADD_MESSAGE', payload: assistantMessage });
         
+        // Keep track of the current content
+        let currentContent = '';
+        
         // Send stream message to backend
         sendStreamMessage(
           state.messages,
           (chunk: string) => {
             console.log('Received chunk:', chunk);
+            // Update current content
+            currentContent += chunk;
             // Update assistant message with new content
             dispatch({
               type: 'UPDATE_MESSAGE',
               payload: {
                 id: assistantMessage.id,
-                content: assistantMessage.content + chunk,
+                content: currentContent,
               },
             });
           },
@@ -136,18 +141,17 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             dispatch({ type: 'SET_ERROR', payload: error });
           },
           () => {
-            console.log('Stream completed. Final content:', assistantMessage.content);
+            console.log('Stream completed. Final content:', currentContent);
             // Update assistant message to not thinking anymore
             dispatch({
               type: 'UPDATE_MESSAGE',
               payload: {
                 id: assistantMessage.id,
-                content: assistantMessage.content,
+                content: currentContent,
+                thinking: false,
               },
             });
             dispatch({ type: 'SET_TYPING', payload: false });
-          }
-        );
           },
           state.responseMode
         );
