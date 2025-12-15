@@ -1,15 +1,7 @@
 import type { Message, StreamResponse } from '../types';
 
 export const sendStreamMessage = async (
-  messages: Message[],
-  onChunk: (chunk: string) => void,
-  onError: (error: string) => void,
-  onComplete: () => void,
-  responseMode: 'quick' | 'deep' = 'quick',
-  stream: boolean = true,
-  thinking?: { type: "enabled" },
-  onReasoningChunk?: (chunk: string) => void
-) => {
+messages: Message[], onChunk: (chunk: string) => void, onError: (error: string) => void, onComplete: () => void, responseMode: 'quick' | 'deep' = 'quick', stream: boolean = true, onReasoningChunk?: (chunk: string) => void) => {
   try {
     console.log('Sending messages to backend:', messages);
     // Adjust parameters based on response mode
@@ -20,7 +12,7 @@ export const sendStreamMessage = async (
           top_p: 0.9,              // Lower top_p for more focused responses
           max_tokens: 2048,        // More tokens for detailed responses
           stream,                  // Include stream parameter
-          thinking                 // Include thinking parameter
+          thinking: { type: "enabled" }  // Enable thinking for deep mode
         }
       : {
           messages,
@@ -28,7 +20,7 @@ export const sendStreamMessage = async (
           top_p: 0.95,             // Higher top_p for faster responses
           max_tokens: 1024,        // Standard token limit
           stream,                  // Include stream parameter
-          thinking                 // Include thinking parameter
+          thinking: { type: "disabled" }  // Disable thinking for quick mode
         };
 
     const response = await fetch('/api/chat/stream', {

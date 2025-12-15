@@ -162,7 +162,6 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           },
           state.responseMode,
           true, // Enable streaming by default
-          state.responseMode === 'deep' ? { type: "enabled" } : undefined, // 仅在 deep 模式下启用思考
           (reasoningChunk: string) => {
             console.log('Received reasoning chunk:', reasoningChunk);
             // Update current reasoning content
