@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { Message } from '../types';
 import { useChat } from '../context/ChatContext';
 
@@ -10,6 +12,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   const isUser = message.role === 'user';
   const [isHovered, setIsHovered] = useState(false);
   const { responseMode } = useChat();
+  const [isReasoningExpanded, setIsReasoningExpanded] = useState(responseMode === 'deep');
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6 animate-fadeIn group`}>
@@ -32,9 +35,135 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
+          {/* Reasoning Content - Collapsible */}
+          {!isUser && (message.reasoning_content || message.thinking) && (
+            <div className="mb-3 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                className={`w-full px-3 py-2 text-left flex items-center justify-between transition-colors ${
+                  isReasoningExpanded 
+                    ? 'bg-neutral-100 dark:bg-neutral-800' 
+                    : 'bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-850'
+                }`}
+                onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
+              >
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  推理过程
+                </span>
+                <svg 
+                  className={`w-4 h-4 text-neutral-500 transition-transform duration-200 ${
+                    isReasoningExpanded ? 'transform rotate-180' : ''
+                  }`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {isReasoningExpanded && (
+                <div className={`px-3 py-2 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700`}>
+                  {message.reasoning_content ? (
+                    <div className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 italic">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          code: ({node, className, children, ...props}: any) => {
+                            const match = /language-(\w+)/.exec(className || '')
+                            const isInline = !(props as any)['data-inline']
+                            return match && !isInline ? (
+                              <pre className={`bg-neutral-100 dark:bg-neutral-800 rounded-md p-2 overflow-x-auto ${className}`}>
+                                <code className={className} {...props}>
+                                  {children}
+                                </code>
+                              </pre>
+                            ) : (
+                              <code className={`${className} bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded text-sm`} {...props}>
+                                {children}
+                              </code>
+                            )
+                          },
+                          a: ({node, ...props}) => (
+                            <a className="text-primary-500 hover:text-primary-600 underline" target="_blank" rel="noopener noreferrer" {...props} />
+                          ),
+                          blockquote: ({node, ...props}) => (
+                            <blockquote className="border-l-4 border-neutral-300 dark:border-neutral-600 pl-4 italic" {...props} />
+                          ),
+                          table: ({node, ...props}) => (
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full border-collapse border border-neutral-300 dark:border-neutral-600" {...props} />
+                            </div>
+                          ),
+                          th: ({node, ...props}) => (
+                            <th className="border border-neutral-300 dark:border-neutral-600 px-2 py-1 bg-neutral-100 dark:bg-neutral-800" {...props} />
+                          ),
+                          td: ({node, ...props}) => (
+                            <td className="border border-neutral-300 dark:border-neutral-600 px-2 py-1" {...props} />
+                          ),
+                        }}
+                      >
+                        {message.reasoning_content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : message.thinking ? (
+                    <div className="flex items-center text-sm text-neutral-500 dark:text-neutral-400">
+                      <div className="typing-indicator mr-2">
+                        <div className="typing-dot animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="typing-dot animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="typing-dot animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                      <span className="font-medium">正在思考中...</span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Message Content */}
-          <div className={`text-sm leading-relaxed whitespace-pre-wrap ${isUser ? 'text-white' : 'text-neutral-800 dark:text-neutral-200'}`}>
-            {message.content || (
+          <div className={`text-sm leading-relaxed ${isUser ? 'text-white' : 'text-neutral-800 dark:text-neutral-200'}`}>
+            {message.content ? (
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code: ({node, className, children, ...props}: any) => {
+                    const match = /language-(\w+)/.exec(className || '')
+                    const isInline = !(props as any)['data-inline']
+                    return match && !isInline ? (
+                      <pre className={`bg-neutral-100 dark:bg-neutral-800 rounded-md p-2 overflow-x-auto ${className}`}>
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      </pre>
+                    ) : (
+                      <code className={`${className} bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded text-sm`} {...props}>
+                        {children}
+                      </code>
+                    )
+                  },
+                  a: ({node, ...props}) => (
+                    <a className="text-primary-500 hover:text-primary-600 underline" target="_blank" rel="noopener noreferrer" {...props} />
+                  ),
+                  blockquote: ({node, ...props}) => (
+                    <blockquote className="border-l-4 border-neutral-300 dark:border-neutral-600 pl-4 italic" {...props} />
+                  ),
+                  table: ({node, ...props}) => (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border-collapse border border-neutral-300 dark:border-neutral-600" {...props} />
+                    </div>
+                  ),
+                  th: ({node, ...props}) => (
+                    <th className="border border-neutral-300 dark:border-neutral-600 px-2 py-1 bg-neutral-100 dark:bg-neutral-800" {...props} />
+                  ),
+                  td: ({node, ...props}) => (
+                    <td className="border border-neutral-300 dark:border-neutral-600 px-2 py-1" {...props} />
+                  ),
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+            ) : (
               <span className="text-neutral-400 dark:text-neutral-500 italic">This message is empty</span>
             )}
           </div>
@@ -60,17 +189,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
             </div>
           )}
 
-          {/* Thinking Indicator */}
-          {message.thinking && responseMode === 'deep' && (
-            <div className="flex items-center mt-3 text-sm text-neutral-500 dark:text-neutral-400">
-              <div className="typing-indicator mr-2">
-                <div className="typing-dot animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="typing-dot animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="typing-dot animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
-              <span className="font-medium">深度思考中...</span>
-            </div>
-          )}
+
 
           {/* Timestamp and Actions */}
           <div className={`flex items-center justify-between mt-2 ${isUser ? 'text-primary-100' : 'text-neutral-500 dark:text-neutral-400'}`}>

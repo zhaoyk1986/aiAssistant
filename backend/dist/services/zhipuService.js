@@ -45,8 +45,8 @@ const handleChatRequest = async (req, res) => {
             temperature: chatRequest.temperature || 0.7,
             top_p: chatRequest.top_p || 0.95,
             max_tokens: chatRequest.max_tokens || 1024,
-            stream: streamMode
-            //thinking: { type: "enabled" }
+            stream: streamMode,
+            thinking: chatRequest.thinking
         }, {
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
@@ -75,9 +75,14 @@ const handleChatRequest = async (req, res) => {
                         try {
                             const streamResponse = JSON.parse(jsonStr);
                             const content = streamResponse.choices[0]?.delta?.content;
+                            const reasoningContent = streamResponse.choices[0]?.delta?.reasoning_content;
                             if (content) {
                                 // Send the content as a Server-Sent Event
                                 res.write(`data: ${JSON.stringify({ content })}\n\n`);
+                            }
+                            if (reasoningContent) {
+                                // Send the reasoning content as a Server-Sent Event
+                                res.write(`data: ${JSON.stringify({ reasoning_content: reasoningContent })}\n\n`);
                             }
                         }
                         catch (parseError) {
@@ -103,9 +108,15 @@ const handleChatRequest = async (req, res) => {
                 // For non-stream mode, response.data contains the complete JSON
                 const completeResponse = response.data;
                 const content = completeResponse.choices[0]?.message?.content;
-                if (content) {
-                    // Send the complete content
-                    res.status(200).json({ content });
+                const reasoningContent = completeResponse.choices[0]?.message?.reasoning_content;
+                console.log('Complete response:', completeResponse);
+                if (content || reasoningContent) {
+                    // Send the complete content and reasoning content
+                    const responseData = { content: content || '' };
+                    if (reasoningContent) {
+                        responseData.reasoning_content = reasoningContent;
+                    }
+                    res.status(200).json(responseData);
                 }
                 else {
                     res.status(200).json({ content: '' });

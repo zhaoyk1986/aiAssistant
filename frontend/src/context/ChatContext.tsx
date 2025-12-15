@@ -16,7 +16,7 @@ interface ChatContextType extends ChatState {
 
 type ChatAction =
   | { type: 'ADD_MESSAGE'; payload: Message }
-  | { type: 'UPDATE_MESSAGE'; payload: { id: string; content: string; thinking?: boolean } }
+  | { type: 'UPDATE_MESSAGE'; payload: { id: string; content: string; reasoning_content?: string; thinking?: boolean } }
   | { type: 'SET_TYPING'; payload: boolean }
   | { type: 'SET_UPLOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
@@ -45,7 +45,12 @@ const chatReducer = (state: ChatState, action: ChatAction): ChatState => {
         ...state,
         messages: state.messages.map(msg =>
           msg.id === action.payload.id
-            ? { ...msg, content: action.payload.content, thinking: action.payload.thinking !== undefined ? action.payload.thinking : msg.thinking }
+            ? { 
+                ...msg, 
+                content: action.payload.content, 
+                reasoning_content: action.payload.reasoning_content !== undefined ? action.payload.reasoning_content : msg.reasoning_content,
+                thinking: action.payload.thinking !== undefined ? action.payload.thinking : msg.thinking 
+              }
             : msg
         ),
       };
@@ -119,6 +124,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         // Keep track of the current content
         let currentContent = '';
+        let currentReasoningContent = '';
         
         // Send stream message to backend
         sendStreamMessage(
@@ -148,6 +154,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               payload: {
                 id: assistantMessage.id,
                 content: currentContent,
+                reasoning_content: currentReasoningContent,
                 thinking: false,
               },
             });
@@ -155,7 +162,21 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           },
           state.responseMode,
           true, // Enable streaming by default
-          state.responseMode === 'deep' ? { type: "enabled" } : undefined // 仅在 deep 模式下启用思考
+          state.responseMode === 'deep' ? { type: "enabled" } : undefined, // 仅在 deep 模式下启用思考
+          (reasoningChunk: string) => {
+            console.log('Received reasoning chunk:', reasoningChunk);
+            // Update current reasoning content
+            currentReasoningContent += reasoningChunk;
+            // Update assistant message with new reasoning content
+            dispatch({
+              type: 'UPDATE_MESSAGE',
+              payload: {
+                id: assistantMessage.id,
+                content: currentContent,
+                reasoning_content: currentReasoningContent,
+              },
+            });
+          }
         );
       }
     }

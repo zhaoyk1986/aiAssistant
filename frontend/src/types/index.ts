@@ -2,6 +2,7 @@ export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  reasoning_content?: string;
   images?: string[];
   timestamp: number;
   thinking?: boolean;
@@ -27,5 +28,6 @@ export interface ChatRequest {
 
 export interface StreamResponse {
   content?: string;
+  reasoning_content?: string;
   error?: string;
 }

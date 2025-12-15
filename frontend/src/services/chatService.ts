@@ -7,7 +7,8 @@ export const sendStreamMessage = async (
   onComplete: () => void,
   responseMode: 'quick' | 'deep' = 'quick',
   stream: boolean = true,
-  thinking?: { type: "enabled" }
+  thinking?: { type: "enabled" },
+  onReasoningChunk?: (chunk: string) => void
 ) => {
   try {
     console.log('Sending messages to backend:', messages);
@@ -85,6 +86,11 @@ export const sendStreamMessage = async (
             if (data.content) {
               console.log('Calling onChunk with content:', data.content);
               onChunk(data.content);
+            }
+            
+            if (data.reasoning_content && onReasoningChunk) {
+              console.log('Calling onReasoningChunk with reasoning content:', data.reasoning_content);
+              onReasoningChunk(data.reasoning_content);
             }
           } catch (parseError) {
             console.error('Error parsing stream data:', parseError);

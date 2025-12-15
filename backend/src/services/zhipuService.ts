@@ -91,10 +91,16 @@ export const handleChatRequest = async (req: Request, res: Response) => {
             try {
               const streamResponse: ZhipuStreamResponse = JSON.parse(jsonStr);
               const content = streamResponse.choices[0]?.delta?.content;
+              const reasoningContent = streamResponse.choices[0]?.delta?.reasoning_content;
               
               if (content) {
                 // Send the content as a Server-Sent Event
                 res.write(`data: ${JSON.stringify({ content })}\n\n`);
+              }
+              
+              if (reasoningContent) {
+                // Send the reasoning content as a Server-Sent Event
+                res.write(`data: ${JSON.stringify({ reasoning_content: reasoningContent })}\n\n`);
               }
             } catch (parseError) {
               console.error('Error parsing stream response:', parseError);
@@ -120,10 +126,17 @@ export const handleChatRequest = async (req: Request, res: Response) => {
         // For non-stream mode, response.data contains the complete JSON
         const completeResponse = response.data;
         const content = completeResponse.choices[0]?.message?.content;
+        const reasoningContent = completeResponse.choices[0]?.message?.reasoning_content;
+
+        console.log('Complete response:', completeResponse);
         
-        if (content) {
-          // Send the complete content
-          res.status(200).json({ content });
+        if (content || reasoningContent) {
+          // Send the complete content and reasoning content
+          const responseData: any = { content: content || '' };
+          if (reasoningContent) {
+            responseData.reasoning_content = reasoningContent;
+          }
+          res.status(200).json(responseData);
         } else {
           res.status(200).json({ content: '' });
         }
