@@ -16,7 +16,7 @@ interface ChatContextType extends ChatState {
 
 type ChatAction =
   | { type: 'ADD_MESSAGE'; payload: Message }
-  | { type: 'UPDATE_MESSAGE'; payload: { id: string; content: string } }
+  | { type: 'UPDATE_MESSAGE'; payload: { id: string; content: string; thinking?: boolean } }
   | { type: 'SET_TYPING'; payload: boolean }
   | { type: 'SET_UPLOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
@@ -45,7 +45,7 @@ const chatReducer = (state: ChatState, action: ChatAction): ChatState => {
         ...state,
         messages: state.messages.map(msg =>
           msg.id === action.payload.id
-            ? { ...msg, content: action.payload.content }
+            ? { ...msg, content: action.payload.content, thinking: action.payload.thinking !== undefined ? action.payload.thinking : msg.thinking }
             : msg
         ),
       };
@@ -153,7 +153,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
             dispatch({ type: 'SET_TYPING', payload: false });
           },
-          state.responseMode
+          state.responseMode,
+          true, // Enable streaming by default
+          state.responseMode === 'deep' ? { type: "enabled" } : undefined // 仅在 deep 模式下启用思考
         );
       }
     }

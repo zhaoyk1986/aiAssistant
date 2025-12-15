@@ -21,6 +21,8 @@ export interface ChatRequest {
   temperature?: number;
   top_p?: number;
   max_tokens?: number;
+  stream?: boolean;
+  thinking?: { type: "enabled" };
 }
 
 export interface StreamResponse {

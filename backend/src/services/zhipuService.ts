@@ -13,7 +13,10 @@ export const handleChatRequest = async (req: Request, res: Response) => {
     return;
   }
 
+
   const chatRequest: ChatRequest = req.body;
+
+  console.log('chatRequest:', chatRequest);
   
   // Validate required fields
   if (!chatRequest.messages || !Array.isArray(chatRequest.messages)) {
@@ -22,17 +25,22 @@ export const handleChatRequest = async (req: Request, res: Response) => {
     return;
   }
   
-  // Set headers for SSE
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+  // Determine stream mode from request or use false as default
+  const streamMode = chatRequest.stream ?? false;
+  
+  // Set appropriate headers based on stream mode
+  if (streamMode) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+  }
 
   try {
-    // Call Zhipu API with streaming
+    // Call Zhipu API with appropriate response type
     const response: AxiosResponse = await axios.post(
       'https://open.bigmodel.cn/api/paas/v4/chat/completions',
       {
-        model: 'glm-4-flash',
+        model: 'glm-4.6v-flash',
         messages: chatRequest.messages.map(msg => ({
           role: msg.role,
           content: msg.images && msg.images.length > 0 
@@ -45,63 +53,95 @@ export const handleChatRequest = async (req: Request, res: Response) => {
         temperature: chatRequest.temperature || 0.7,
         top_p: chatRequest.top_p || 0.95,
         max_tokens: chatRequest.max_tokens || 1024,
-        stream: true
+        stream: streamMode,
+        thinking: chatRequest.thinking
       },
       {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
-        responseType: 'stream'
+        responseType: streamMode ? 'stream' : 'json'
       }
     );
 
-    // Pipe the stream to the response
-    response.data.on('data', (chunk: Buffer) => {
-      const data = chunk.toString();
-      
-      // Process SSE events
-      const events = data.split('\n\n').filter(event => event.trim());
-      
-      for (const event of events) {
-        if (event.startsWith('data:')) {
-          const jsonStr = event.substring(5).trim();
+    // Handle response based on stream mode
+    if (streamMode) {
+      // Accumulator for incomplete data chunks
+      let buffer = '';
+
+      // Pipe the stream to the response
+      response.data.on('data', (chunk: Buffer) => {
+        buffer += chunk.toString();
+        
+        // Process complete SSE events (split by \n\n)
+        let eventEndIndex;
+        while ((eventEndIndex = buffer.indexOf('\n\n')) !== -1) {
+          const event = buffer.slice(0, eventEndIndex).trim();
+          buffer = buffer.slice(eventEndIndex + 2); // Remove processed event and delimiter
           
-          // Skip the final done event
-          if (jsonStr === '[DONE]') {
-            continue;
-          }
-          
-          try {
-            const streamResponse: ZhipuStreamResponse = JSON.parse(jsonStr);
-            const content = streamResponse.choices[0]?.delta?.content;
+          if (event.startsWith('data:')) {
+            const jsonStr = event.substring(5).trim();
             
-            if (content) {
-              // Send the content as a Server-Sent Event
-              res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            // Skip the final done event
+            if (jsonStr === '[DONE]') {
+              continue;
             }
-          } catch (parseError) {
-            console.error('Error parsing stream response:', parseError);
+            
+            try {
+              const streamResponse: ZhipuStreamResponse = JSON.parse(jsonStr);
+              const content = streamResponse.choices[0]?.delta?.content;
+              
+              if (content) {
+                // Send the content as a Server-Sent Event
+                res.write(`data: ${JSON.stringify({ content })}\n\n`);
+              }
+            } catch (parseError) {
+              console.error('Error parsing stream response:', parseError);
+            }
           }
         }
+      });
+
+      response.data.on('end', () => {
+        // End the SSE stream
+        res.write('data: [DONE]\n\n');
+        res.end();
+      });
+
+      response.data.on('error', (error: Error) => {
+        console.error('Stream error:', error);
+        res.status(500).write(`data: ${JSON.stringify({ error: 'Stream error occurred' })}\n\n`);
+        res.end();
+      });
+    } else {
+      // Handle non-stream response
+      try {
+        // For non-stream mode, response.data contains the complete JSON
+        const completeResponse = response.data;
+        const content = completeResponse.choices[0]?.message?.content;
+        
+        if (content) {
+          // Send the complete content
+          res.status(200).json({ content });
+        } else {
+          res.status(200).json({ content: '' });
+        }
+      } catch (parseError) {
+        console.error('Error parsing complete response:', parseError);
+        res.status(500).json({ error: 'Error parsing API response' });
       }
-    });
-
-    response.data.on('end', () => {
-      // End the SSE stream
-      res.write('data: [DONE]\n\n');
-      res.end();
-    });
-
-    response.data.on('error', (error: Error) => {
-      console.error('Stream error:', error);
-      res.status(500).write(`data: ${JSON.stringify({ error: 'Stream error occurred' })}\n\n`);
-      res.end();
-    });
+    }
 
   } catch (error: any) {
     console.error('Zhipu API error:', error);
-    res.status(500).write(`data: ${JSON.stringify({ error: error.message || 'Failed to call Zhipu API' })}\n\n`);
-    res.end();
+    if (streamMode) {
+      res.status(500).write(`data: ${JSON.stringify({ error: error.message || 'Failed to call Zhipu API' })}
+
+`);
+      res.end();
+    } else {
+      res.status(500).json({ error: error.message || 'Failed to call Zhipu API' });
+    }
   }
 };

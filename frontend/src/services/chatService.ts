@@ -5,7 +5,9 @@ export const sendStreamMessage = async (
   onChunk: (chunk: string) => void,
   onError: (error: string) => void,
   onComplete: () => void,
-  responseMode: 'quick' | 'deep' = 'quick'
+  responseMode: 'quick' | 'deep' = 'quick',
+  stream: boolean = true,
+  thinking?: { type: "enabled" }
 ) => {
   try {
     console.log('Sending messages to backend:', messages);
@@ -16,12 +18,16 @@ export const sendStreamMessage = async (
           temperature: 0.8,        // Higher temperature for more creativity
           top_p: 0.9,              // Lower top_p for more focused responses
           max_tokens: 2048,        // More tokens for detailed responses
+          stream,                  // Include stream parameter
+          thinking                 // Include thinking parameter
         }
       : {
           messages,
           temperature: 0.5,        // Lower temperature for more consistent responses
           top_p: 0.95,             // Higher top_p for faster responses
           max_tokens: 1024,        // Standard token limit
+          stream,                  // Include stream parameter
+          thinking                 // Include thinking parameter
         };
 
     const response = await fetch('/api/chat/stream', {

@@ -51,7 +51,7 @@ const MessageList: React.FC = () => {
 
   return (
     <div className="space-y-1">
-      {messages.map((message, index) => (
+      {messages.map((message) => (
         <MessageItem key={message.id} message={message} />
       ))}
     </div>

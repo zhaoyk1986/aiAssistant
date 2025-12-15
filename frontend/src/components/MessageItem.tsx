@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Message } from '../types';
+import { useChat } from '../context/ChatContext';
 
 interface MessageItemProps {
   message: Message;
@@ -8,6 +9,7 @@ interface MessageItemProps {
 const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   const isUser = message.role === 'user';
   const [isHovered, setIsHovered] = useState(false);
+  const { responseMode } = useChat();
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6 animate-fadeIn group`}>
@@ -23,7 +25,8 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
       )}
       
       {/* Message Bubble */}
-      <div className={`max-w-[75%] ${isUser ? 'order-first' : ''}`}>
+      {/* 这里我想设置成固定宽度，比如max-w-[75%] ，但是如果是用户消息，我想从右往左显示 */}
+      <div className={`max-w-[75%] min-w-[400px] ${isUser ? 'order-first' : ''}`}>
         <div 
           className={`message-bubble ${isUser ? 'message-bubble-user' : 'message-bubble-assistant'} ${isHovered ? 'shadow-medium' : ''} relative`}
           onMouseEnter={() => setIsHovered(true)}
@@ -58,7 +61,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
           )}
 
           {/* Thinking Indicator */}
-          {message.thinking && (
+          {message.thinking && responseMode === 'deep' && (
             <div className="flex items-center mt-3 text-sm text-neutral-500 dark:text-neutral-400">
               <div className="typing-indicator mr-2">
                 <div className="typing-dot animate-bounce" style={{ animationDelay: '0ms' }}></div>
