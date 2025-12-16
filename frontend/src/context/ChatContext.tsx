@@ -117,7 +117,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           role: 'assistant',
           content: '',
           timestamp: Date.now(),
-          thinking: true,
+          thinking: false,
         };
         
         dispatch({ type: 'ADD_MESSAGE', payload: assistantMessage });

@@ -14,6 +14,8 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   const { responseMode, toggleLike, deleteMessage } = useChat();
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(responseMode === 'deep');
 
+  console.log('message:', message);
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6 animate-fadeIn group`}>
       {/* Avatar */}
